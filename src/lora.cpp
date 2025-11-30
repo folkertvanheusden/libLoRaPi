@@ -6,9 +6,18 @@
 #include <unistd.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
+#include <sys/time.h>
 
 #include "lora.h"
 #include "packet.h"
+
+
+static uint64_t get_ms()
+{
+	timeval tv { };
+	gettimeofday(&tv, nullptr);
+	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
 const uint32_t LoRa::bw[10] = {
 	7800,  10400,  15600,
@@ -305,15 +314,18 @@ size_t LoRa::receive(unsigned char *buf)
 	return bytes;
 }
 
-LoRaPacket LoRa::receivePacket()
+LoRaPacket LoRa::receivePacket(const int timeout)
 {
+	uint64_t start = get_ms();
 	unsigned char buf[256];
 	setHeaderMode(HM_EXPLICIT);
 	writeRegister(REG_FIFO_ADDR_PTR, 0);
 	setOpMode(OPMODE_RX);
 	size_t bytes = 0;
 	while ((bytes = receive(buf)) == 0) {
-		usleep(10000);
+		if (timeout >= 0 && get_ms() - start >= timeout)
+			return LoRaPacket(nullptr, 0, 0, 0, 0);
+		usleep(1000);
 	}
 	int packet_rssi = readRegister(REG_PACKET_RSSI) - (getFrequency() < FREQ_868 ? 164 : 157);
 	float snr = ((int8_t)readRegister(REG_PACKET_SNR)) * 0.25;

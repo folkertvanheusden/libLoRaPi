@@ -177,13 +177,13 @@ class LoRa {
 		int        getFrequencyError();
 		uint16_t   getPreambleLength();
 
-		bool begin();
-		void sleep();
-		void standby();
-		uint8_t version();
+		bool       begin();
+		void       sleep();
+		void       standby();
+		uint8_t    version();
 
-		LoRaPacket receivePacket();
-		size_t transmitPacket(LoRaPacket *);
+		LoRaPacket receivePacket(const int timeout=-1);
+		size_t     transmitPacket(LoRaPacket *);
 };
 
 #endif
