@@ -17,10 +17,12 @@ const uint32_t LoRa::bw[10] = {
 	500000
 };
 
-LoRa::LoRa(uint8_t spi, uint8_t ss, uint8_t dio0, uint8_t rst) : _spi_channel(spi),
-																 _ss_pin(ss),
-																 _dio0_pin(dio0),
-																 _rst_pin(rst) {}
+LoRa::LoRa(uint8_t bus, uint8_t spi, uint8_t ss, uint8_t dio0, uint8_t rst) :
+	 _bus(bus),
+ 	 _spi_channel(spi),
+	 _ss_pin(ss),
+	 _dio0_pin(dio0),
+	 _rst_pin(rst) {}
 
 LoRa *LoRa::setSpreadFactor(LoRa::sf_t sf)
 {
@@ -85,6 +87,18 @@ LoRa *LoRa::setBandwidth(bw_t bandwidth)
 LoRa::bw_t LoRa::getBandwidth()
 {
 	return (LoRa::bw_t)(readRegister(REG_MODEM_CONFIG1) >> 4);
+}
+
+LoRa *LoRa::setPreambleLength(uint16_t length)
+{
+	writeRegister(REG_PREAMBLE_MSB, length >> 8);
+	writeRegister(REG_PREAMBLE_LSB, length);
+	return this;
+}
+
+uint16_t LoRa::getPreambleLength()
+{
+	return (readRegister(REG_PREAMBLE_MSB) << 8) | readRegister(REG_PREAMBLE_LSB);
 }
 
 LoRa *LoRa::setTXPower(uint8_t p)
@@ -177,7 +191,7 @@ LoRa::lna_gain_t LoRa::getLNAGain()
 
 LoRa *LoRa::setLNABoost(bool boost)
 {
-	writeRegister(REG_LNA, (readRegister(REG_LNA) & 0xFA) | (boost ? 0x03 : 0x00));
+	writeRegister(REG_LNA, readRegister(REG_LNA) | (boost ? 0x03 : 0x00));
 	return this;
 }
 
@@ -203,7 +217,7 @@ uint8_t LoRa::readRegister(uint8_t addr)
 	_spibuf[0] = addr & 0x7f;
 	_spibuf[1] = 0x00;
 	selectReceiver();
-	wiringPiSPIDataRW(_spi_channel, _spibuf, 2);
+	wiringPiSPIxDataRW(_bus, _spi_channel, _spibuf, 2);
 	deselectReceiver();
 	return _spibuf[1];
 }
@@ -213,14 +227,13 @@ void LoRa::writeRegister(uint8_t addr, uint8_t val)
 	_spibuf[0] = addr | 0x80;
 	_spibuf[1] = val;
 	selectReceiver();
-	wiringPiSPIDataRW(_spi_channel, _spibuf, 2);
+	wiringPiSPIxDataRW(_bus, _spi_channel, _spibuf, 2);
 	deselectReceiver();
 }
 
 void LoRa::setOpMode(uint8_t mode)
 {
-	// Preserve AccessSharedReg and LowFrequencyModeOn
-	writeRegister(REG_OPMODE, (readRegister(REG_OPMODE) & 0xC8) | OPMODE_LORA | mode);
+	writeRegister(REG_OPMODE, OPMODE_LORA | mode);
 }
 
 uint8_t LoRa::getOpMode()
@@ -260,7 +273,7 @@ bool LoRa::begin()
 	pinMode(_ss_pin, OUTPUT);
 	pinMode(_dio0_pin, INPUT);
 	pinMode(_rst_pin, OUTPUT);
-	wiringPiSPISetup(_spi_channel, 500000);
+	wiringPiSPIxSetupMode(_bus, _spi_channel, 500000, 0);
 	sleep();
 	if (version() != 0x12)
 	{
@@ -323,7 +336,7 @@ size_t LoRa::write(const uint8_t *data, size_t size)
 			buf[i + 1] = data[i];
 		}
 		selectReceiver();
-		int bytes = wiringPiSPIDataRW(_spi_channel, buf, size + 1);
+		int bytes = wiringPiSPIxDataRW(_bus, _spi_channel, buf, size + 1);
 		deselectReceiver();
 		writeRegister(REG_PAYLOAD_LENGTH, currentLength + size);
 		free(buf);

@@ -116,6 +116,7 @@
 class LoRa {
 	private:
 		unsigned char _spibuf[2];
+		uint8_t  _bus;
 		uint8_t  _spi_channel;
 		uint8_t  _ss_pin;
 		uint8_t  _dio0_pin;
@@ -151,7 +152,7 @@ class LoRa {
 			LNA_AGC
 		};
 
-		LoRa(uint8_t, uint8_t, uint8_t, uint8_t);
+		LoRa(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 		LoRa      *setSpreadFactor(sf_t);
 		LoRa      *setFrequency(uint32_t);
 		LoRa      *setBandwidth(bw_t);
@@ -161,6 +162,7 @@ class LoRa {
 		LoRa      *setSyncWord(uint8_t);
 		LoRa      *setLNAGain(lna_gain_t);
 		LoRa      *setLNABoost(bool);
+		LoRa      *setPreambleLength(uint16_t length);
 		LoRa      *enableCRC();
 		LoRa      *disableCRC();
 		sf_t       getSpreadFactor();
@@ -173,6 +175,7 @@ class LoRa {
 		lna_gain_t getLNAGain();
 		bool       getLNABoost();
 		int        getFrequencyError();
+		uint16_t   getPreambleLength();
 
 		bool begin();
 		void sleep();
